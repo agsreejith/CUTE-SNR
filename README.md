@@ -12,7 +12,9 @@ Input folder contain the required inputs
 # CUTE-SNR V2.0 Expected Nov 2020
 
 Live website will be avalaible
+
 Option for a parameter file in python.
+
 Detailed manual.
 
 
