@@ -1,4 +1,4 @@
-# CUTE-SNR V1.0
+# CUTE-SNR V0.5
 To run python version
 edit parameters and run sample.py
 Python code expects the directory structure to be maintained. 
