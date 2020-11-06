@@ -141,7 +141,7 @@ def cute_snr_calculator(t_star,r_star,m_star,s_dist,logr,stype,Ra,Dec,transit_du
     
     for i in range (0,w_length):
         ccd_count[i]  = (ccd_count1[int(i/2)]/2)*exptime # assuming 2 resolution element 
-        noise[i]      = np.sqrt(ccd_count[i]+(width*(r_noise**2+(dark_noise*exptime/G))))
+        noise[i]      = np.sqrt(ccd_count[i]+(width*(r_noise**2+(dark_noise*exptime))))
         snr[i]        = ccd_count[i]/noise[i]
 
 #user defined region
