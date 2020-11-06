@@ -59,7 +59,7 @@ pro cute_snr_calculator,parameter_file
   for i=0,w_length-1 do begin
     ccd_count[i]  = (ccd_count1[i/2]/2)*exptime ; assuming 2 resolution element 
     ;print,ccd_count1[i/2],ccd_count[i]
-    noise[i]      = sqrt(ccd_count[i])+(width*(r_noise^2+(dark_noise*exptime/G)))
+    noise[i]      = sqrt(ccd_count[i])+(width*(r_noise^2+(dark_noise*exptime)))
     snr[i]        = ccd_count[i]/noise[i]
   endfor
 
