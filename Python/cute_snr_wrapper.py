@@ -29,7 +29,15 @@ spectral_type='A0V'      # Stellar spectral type
 logr=-5.0                # Stellar activity parameter (Log R'HK)
 ud=[[2600,2700],[2650,2750]]
 
-csc.cute_snr_calculator(t_star,r_star,m_star,s_dist,logr,spectral_type,Ra,Dec,transit_duration,ud,fwhm,r_noise,
-                        dark_noise,exptime,G,width,line_core_emission,
-                        mg2_col, mg1_col ,fe2_col,add_ism_abs
-                        ,readtime,number_of_transits)
+fig,snr_txt=csc.cute_snr_calculator(t_star,r_star,m_star,s_dist,logr,spectral_type,Ra,Dec,
+                                    transit_duration,ud,fwhm,r_noise,dark_noise,exptime,G,
+                                    width,line_core_emission,mg2_col, mg1_col ,fe2_col,
+                                    add_ism_abs,readtime,number_of_transits)
+filename='cute_snr_'
+imagefile=filename+'.png'
+txtfile=filename+'.txt'
+plt.savefig(os.path.join(os.path.curdir,imagefile),dpi=100)
+file_out = os.path.join(os.path.curdir,'static',txtfile)
+cute_snr = open(file_out,'w')
+cute_snr.write(snr_txt)
+cute_snr.close()
