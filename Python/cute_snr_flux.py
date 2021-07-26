@@ -10,32 +10,152 @@ import numpy as np
 import astropy.modeling.functional_models as am
 import csc_functions as csc 
 from astropy.io import ascii
+import scipy.special as ss
+import scipy.constants as sc
+import astropy.constants as ac
+
+
+vc    = ac.c.to("km/s").value        # Speed of light, km/s
+
+
+
+class Voigt(object):
+    r"""
+    1D Voigt profile model.
+
+    Parameters
+    ----------
+    x0: Float
+       Line center location.
+    hwhmL: Float
+       Half-width at half maximum of the Lorentz distribution.
+    hwhmG: Float
+       Half-width at half maximum of the Gaussian distribution.
+    scale: Float
+       Scale of the profile (scale=1 returns a profile with integral=1.0).
+
+    Example
+    -------
+    >>> import numpy as np
+    >>> import matplotlib.pyplot as plt
+    >>> import pyratbay.opacity.broadening as b
+    >>> Nl = 5
+    >>> Nw = 10.0
+    >>> hG = 1.0
+    >>> HL = np.logspace(-2, 2, Nl)
+    >>> l = b.Lorentz(x0=0.0)
+    >>> d = b.Gauss  (x0=0.0, hwhm=hG)
+    >>> v = b.Voigt  (x0=0.0, hwhmG=hG)
+
+    >>> plt.figure(11, (6,6))
+    >>> plt.clf()
+    >>> plt.subplots_adjust(0.15, 0.1, 0.95, 0.95, wspace=0, hspace=0)
+    >>> for i in np.arange(Nl):
+    >>>   hL = HL[i]
+    >>>   ax = plt.subplot(Nl, 1, 1+i)
+    >>>   v.hwhmL = hL
+    >>>   l.hwhm  = hL
+    >>>   width = 0.5346*hL + np.sqrt(0.2166*hL**2+hG**2)
+    >>>   x = np.arange(-Nw*width, Nw*width, width/1000.0)
+    >>>   plt.plot(x/width, l(x), lw=2.0, color="b",         label="Lorentz")
+    >>>   plt.plot(x/width, d(x), lw=2.0, color="limegreen", label="Doppler")
+    >>>   plt.plot(x/width, v(x), lw=2.0, color="orange",    label="Voigt",
+    >>>            dashes=(8,2))
+    >>>   plt.ylim(np.amin([l(x), v(x)]), 3*np.amax([l(x), v(x), d(x)]))
+    >>>   ax.set_yscale("log")
+    >>>   plt.text(0.025, 0.75, r"$\rm HW_L/HW_G={:4g}$".format(hL/hG),
+    >>>            transform=ax.transAxes)
+    >>>   plt.xlim(-Nw, Nw)
+    >>>   plt.xlabel(r"$\rm x/HW_V$", fontsize=12)
+    >>>   plt.ylabel(r"$\rm Profile$")
+    >>>   if i != Nl-1:
+    >>>       ax.set_xticklabels([""])
+    >>>   if i == 0:
+    >>>       plt.legend(loc="upper right", fontsize=11)
+    """
+    def __init__(self, x0=0.0, hwhmL=1.0, hwhmG=1.0, scale=1.0):
+        # Profile parameters:
+        self.x0    = x0
+        self.hwhmL = hwhmL
+        self.hwhmG = hwhmG
+        self.scale = scale
+        # Constants:
+        self._A = np.array([-1.2150, -1.3509, -1.2150, -1.3509])
+        self._B = np.array([ 1.2359,  0.3786, -1.2359, -0.3786])
+        self._C = np.array([-0.3085,  0.5906, -0.3085,  0.5906])
+        self._D = np.array([ 0.0210, -1.1858, -0.0210,  1.1858])
+        self._sqrtln2 = np.sqrt(np.log(2.0))
+        self._sqrtpi  = np.sqrt(np.pi)
+
+
+    def __call__(self, x):
+        return self.eval(x)
+
+
+    def eval(self, x):
+        """
+        Compute Voigt profile over the specified coordinates range.
+
+        Parameters
+        ----------
+        x: 1D float ndarray
+           Input coordinates where to evaluate the profile.
+
+        Returns
+        -------
+        v: 1D float ndarray
+           The line profile at the x locations.
+        """
+        if self.hwhmL/self.hwhmG < 0.1:
+            sigma = self.hwhmG / (self._sqrtln2 * np.sqrt(2))
+            z = (x + 1j * self.hwhmL - self.x0) / (sigma * np.sqrt(2))
+            return self.scale * ss.wofz(z).real / (sigma * np.sqrt(2*np.pi))
+
+        # This is faster than the previous script (but fails for HWl/HWg > 1.0):
+        X = (x-self.x0) * self._sqrtln2 / self.hwhmG
+        Y = self.hwhmL * self._sqrtln2 / self.hwhmG
+
+        V = 0.0
+        for i in np.arange(4):
+            V += (self._C[i]*(Y-self._A[i]) + self._D[i]*(X-self._B[i])) \
+                 / ((Y-self._A[i])**2 + (X-self._B[i])**2)
+        V /= np.pi * self.hwhmL
+        return \
+            self.scale * self.hwhmL/self.hwhmG * self._sqrtpi*self._sqrtln2 * V
+
+
 
 
 def voigtq(wavelength, absorber, line):
-  bnorm = absorber["B"]/299792.4581
-  vd = absorber["B"]/ (line["wave"] * 1.0e-13)  # Doppler width
+    bnorm = absorber["B"] / vc
+    # Doppler width (Hz):
+    vd = absorber["B"]*sc.kilo / (line["wave"] * sc.angstrom)
 
-  vel = np.abs((wavelength/(line["wave"]*(1.0+absorber["Z"])) - 1.0)  / bnorm)
-  a = line["gamma"] / (4*np.pi * vd)
+    vel = (wavelength/(line["wave"]*(1.0+absorber["Z"])) - 1.0)  / bnorm
+    a = line["gamma"] / (4*np.pi * vd)
 
-  calc1 = np.where(vel >= 10.0) 
-  calc2 = np.where(vel <  10.0) 
+    idx_wings = np.abs(vel) >= 10.0
+    idx_core = np.abs(vel) < 10.0
 
-  vo = vel*0.0 
-  if np.size(calc1) > 0:
-    vel2 = vel[calc1]**2
-    hh1 = 0.56419/vel2 + 0.846/vel2**2
-    hh3 = -0.56/vel2**2
-    vo[calc1] = a * (hh1 + a**2 * hh3) 
+    vo = vel*0.0
+    if np.any(idx_wings) > 0:
+          vel2 = vel[idx_wings]**2
+          hh1 = 0.56419/vel2 + 0.846/vel2**2
+          hh3 = -0.56/vel2**2
+          vo[idx_wings] = a * (hh1 + a**2 * hh3)
 
-  if np.size(calc2) > 0:
-    voigt = am.Voigt1D(0, 1, line["gamma"]/np.sqrt(2), vd*2*np.sqrt(np.log(2)))
-    vo[calc2] = voigt(vel[calc2]*vd)
-    vo[calc2] /= np.amax(vo[calc2])
+    if np.any(idx_core) > 0:
+        x0 = 0.0
+        hwhm_L = line["gamma"] / np.sqrt(2) / 2
+        hwhm_G = vd * np.sqrt(np.log(2))
+        voigt = Voigt(x0, hwhm_L, hwhm_G)
+        vo[idx_core] = voigt(vel[idx_core]*vd)
+        vo[idx_core] /= np.amax(vo[idx_core])
 
-  tau = 0.014971475*(10.0**absorber["N"]) * line["F"] * vo/vd
-  return np.exp(-tau)
+    tau = 0.014971475*(10.0**absorber["N"]) * line["F"] * vo/vd
+
+    return np.exp(-tau)
+
 
 def gaussian(wavelength, wl0, sigma, scale=1.0):
   """
@@ -97,38 +217,34 @@ def cute_snr_lca(flux,sigmaMg22,sigmaMg21,t_star,r_star,logr,stype):
         r_star  = R_book[loc]
 
     logR=logr
-    logCF=0.25*BV**3-1.33*BV**2+0.43*BV+0.24      #Rutten 1984
-    CF=10**logCF
-    Rphot=10**(-4.02-1.40*BV)
-    SMW=(10**logR+Rphot)/1.34e-4/CF
-    E=(((SMW*10**(8.25-1.67*BV)) - 10**(7.49-2.06*BV))) * (r_star*R_sun)**2 / AU**2
-    Rca=E
-
-    if (stype == 'F5V' or stype == 'F6V' or stype == 'F7V' or stype == 'F8V' or stype == 'G0V' or 
-        stype == 'G1V' or stype == 'G2V' or stype == 'G5V' or stype == 'G8V') :
-        Aca = -0.223
-        Bca = 0.080
-        Amg = -0.291
-        Bmg = -0.0208
-        Rmg=10**((np.log10(Rca*10**(Aca+Bca*np.log10(Rca)))-Amg)/(1+Bmg))
-    elif (stype == 'K5V' or stype == 'K4V' or stype == 'K3V' or stype == 'K2V' or stype == 'K1V' or 
-          stype == 'K0V') :
-        Aca = 0.605
-        Bca = -0.433
-        Amg = 0.338
-        Bmg = -0.318
-        Rmg=10**((np.log10(Rca*10**(Aca+Bca*np.log10(Rca)))-Amg)/(1+Bmg))
-    elif (stype == 'M5V' or stype == 'M4V' or stype == 'M3V' or stype == 'M2V' or stype == 'M1V' or 
-          stype == 'M0V') :
-        Aca = 1.028
-        Bca = -0.312
-        Amg = 0.814
-        Bmg = -0.296
-        Rmg=10**((np.log10(Rca*10**(Aca+Bca*np.log10(Rca)))-Amg)/(1+Bmg))
-    else :
-        Rmg=0
+    if (stype == 'F5V' or stype == 'F6V' or stype == 'F7V' or 
+        stype == 'F8V' or stype == 'F9V' or stype == 'F9.5V' or 
+        stype == 'G0V' or stype == 'G1V' or stype == 'G2V' or 
+        stype == 'G3V' or stype == 'G4V' or stype == 'G5V' or
+        stype == 'G6V' or stype == 'G7V' or stype == 'G8V' or 
+        stype == 'G9V') :
+                c1 = 0.87
+                c2 = 5.73
+                Rmg = 10**(c1*logR+c2)
+    elif (stype == 'K9V' or stype == 'K8V' or stype == 'K7V' or 
+          stype == 'K6.5V' or  stype == 'K6V' or stype == 'K5.5V' or 
+          stype == 'K5V' or stype == 'K4.5V' or stype == 'K4V' or 
+          stype == 'K3.5V' or stype == 'K3V' or stype == 'K2.5V' or
+          stype == 'K2V' or stype == 'K1.5V' or stype == 'K1V' or 
+          stype == 'K0.5V' or stype == 'K0V') :
+                c1 = 1.01
+                c2 = 6.00
+                Rmg = 10**(c1*logR+c2)
+    elif (stype == 'M5V' or stype == 'M4V' or stype == 'M3V' or 
+          stype == 'M2V' or stype == 'M2.5V' or stype == 'M1.5V' or 
+          stype == 'M1V' or stype == 'M0.5V' or stype == 'M0V')  :
+                c1 = 1.59
+                c2 = 6.96
+                Rmg = 10**(c1*logR+c2)
+    else:
+                Rmg = 0.0
     #===============================
-
+    print('Rmg',Rmg)
     ##Parameters for MgII
     #TCa2=7.7d5        #temperature of the gas at the formation of the Ca2 emission in K
     #mCa2=40.078/N_A  #atomic mass of Ca2 in g: atomic mass in g/mole / Avogrado number
