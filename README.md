@@ -11,6 +11,6 @@ Input folder contain the required inputs
 
 # CUTE-SNR V1.0 
 
-1. Live website avalaible.
+1. Live website avalaible: https://cute-snr.iwf.oeaw.ac.at/.
 
 
