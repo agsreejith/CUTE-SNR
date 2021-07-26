@@ -9,10 +9,8 @@ edit parameter file and run cute_sn_calculator with the location of the paramete
 stellar models are avaliable on request.
 Input folder contain the required inputs
 
-# CUTE-SNR V2.0 Expected Nov 2020
+# CUTE-SNR V1.0 
 
-1. Live website will be avalaible.
-2. Option for a parameter file in python.
-3. Detailed manual.
+1. Live website avalaible.
 
 
