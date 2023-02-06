@@ -1,6 +1,6 @@
 """
 
-
+SNR Calculator for CUTE mission data
 @author: A. G. Sreejith
 """
 
