@@ -347,13 +347,9 @@ pro cute_snr_calculator,parameter_file
   ; Draw the line plot with no data
   cgPlotS, wavelength[1213:1464], ccd_count[1213:1464], Color='red';,PSym=-16, SymColor='olive', $
     ;SymSize=1.0, Thick=2
-  ;cgPlotS, [2793,2793], !Y.CRange,linestyle=2,color='blue'
-  ;cgPlotS, [2805,2805], !Y.CRange,linestyle=2,color='blue'
   cgPlot, wavelength[1213:1464], snr[1213:1464], Color='red',XTitle='wavelength [$\Angstrom$]',$
     YTitle='SNR', Position=[0.55, 0.55, 0.925, 0.7375],/NoErase $
     ,xrange=[wavelength[1213]-2,wavelength[1464]+2], yrange=[min(snr[1213:1464])-2,max(snr[1213:1464])+2]
-  ;cgPlotS, [2793,2793], !Y.CRange,linestyle=2,color='blue'
-  ;cgPlotS, [2805,2805], !Y.CRange,linestyle=2,color='blue'
   tp=trapz_error(wavelength[1213:1464],ccd_count[1213:1464],noise[1213:1464])
   mgsnr=tp[0]/tp[1]
   cgText,wavelength[1350],min(snr[1213:1464]-1),'INTEGRATED SNR: '+STRTRIM(string(mgsnr),2),CHARSIZE=1., charthick = 1.,/DATA,color='black'
