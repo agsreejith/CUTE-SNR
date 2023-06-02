@@ -13,4 +13,6 @@ Input folder contain the required inputs
 
 1. Live website avalaible: https://cute-snr.iwf.oeaw.ac.at/.
 
+If you use this code please read and cite https://doi.org/10.1007/s10509-023-04187-1
+
 
