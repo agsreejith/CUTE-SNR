@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Requires Numpy, scipy, astropy, matplotlib
-@author: A. g. Sreejith
+Requires numpy, scipy, astropy, matplotlib
+@author: A. G. Sreejith
 """
 import cute_snr_calculator as csc
 
